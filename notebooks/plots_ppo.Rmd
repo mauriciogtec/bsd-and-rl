@@ -1,0 +1,111 @@
+---
+title: "Plots for Example 2"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+library(tidyverse)
+library(cowplot)
+library(latex2exp)
+
+# next two are for python to read .npz files
+library(reticulate)
+np = import("numpy")
+
+# qlims = c(-150, 100)
+
+# logdir = "../logs_ex2/seed_110107"
+logdir = "../logs_ex2/seed_3"
+actdf = read_csv(sprintf("%s/best_eval.csv", logdir)) 
+```
+
+```{r}
+df = actdf %>% 
+  select(x, y, eval0, eval1, eval2) %>%
+  pivot_longer(cols=c("eval0", "eval1", "eval2"), names_to="D", values_to="val") %>% 
+  mutate(D=as.integer(str_replace(D, "eval", "")))
+head(df)
+```
+
+Plot the probability of selecting each action
+
+```{r, fig.height=3, fig.width=8}
+brks = c(0.0, 1.0)
+
+ggplot(df) +
+  geom_tile(aes(x=x, y=y, fill=val)) +
+  facet_wrap(~ D, ncol=3) +
+  theme_cowplot() +
+  scale_fill_gradientn(limits = brks, colors=c("black", gray(0.95))) +
+  labs(fill="Probability", x=TeX("$\\sigma_t$"), y=TeX("$\\mu_t$"))
+
+
+ggsave("figs/ex2_pr.png", width=10, height=4, units="in")
+```
+
+Same as above but save them all separately.
+
+```{r}
+brks = c(0.0, 1.0)
+
+for (v in c(0, 1, 2)) {
+  p = filter(df, D==v) %>% 
+    ggplot() +
+      geom_tile(aes(x=x, y=y, fill=val)) +
+      facet_wrap(~ D, ncol=3) +
+      theme_cowplot() +
+      scale_fill_gradientn(limits = brks, colors=c("black", "lightgrey")) +
+      labs(fill=sprintf("d=%s", v), x=TeX("$\\sigma_t$"), y=TeX("$\\mu_t$"))
+  fname = sprintf("figs/ex2_pr_%s.png", v)
+  ggsave(fname, plot=p, height=5, width=6, units="in")
+}
+```
+
+Now plot the decision boundaries
+
+```{r, fig.width=6, fig.height=4}
+ggplot(actdf) +
+  geom_tile(aes(x=x, y=y, fill=factor(act))) + 
+  scale_fill_manual(values=c("white", "grey", "black")) +
+  theme_cowplot() +
+  labs(fill="Decisions", x=TeX("$\\sigma_t$"), y=TeX("$\\mu_t$"))
+
+ggsave("figs/ex2_boundaries.png", height=5, width=6, units="in")
+```
+
+Historical rewards
+
+```{r}
+evals = np$load(
+  sprintf("%s/evaluations.npz", logdir), allow_pickle = TRUE
+)
+results = 100 * evals$get("results")
+evaldf = tibble(
+  timesteps = evals$get("timesteps"),
+  mu = apply(results, 1, mean),
+  sig = apply(results, 1, sd)
+)
+maxr = max(evaldf$mu)
+
+ggplot(evaldf) +
+  geom_line(aes(x=timesteps, y=mu)) +
+  geom_ribbon(
+    aes(x=timesteps, ymin=mu - sig, ymax=mu + sig),
+    alpha=0.25
+  ) +
+  geom_hline(aes(yintercept=maxr), lty=2) +
+  # geom_text(aes(0, maxr, label = maxr, vjust = -1, hjust=-0.5)) +
+  theme_cowplot() +
+  labs(x="Simulation steps", y=TeX("Evaluation episode total rewards (G_0)"))
+
+ggsave("figs/ex1_returns.png", width=6.5, height=4.5, units="in")
+```
+
+The maximum mean reward over 1000 eval episodes is
+
+```{r}
+maxr
+```
+

@@ -19,6 +19,7 @@
 
 # RStudio files
 .Rproj.user/
+*.Rproj
 
 # produced vignettes
 vignettes/*.html
@@ -37,3 +38,14 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Python
+_cached_buffer.pkl
+
+# Vscode
+launch.json
+__pycache__/
+
+# Project
+logs*
+deprecated/
