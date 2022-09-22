@@ -1,5 +1,6 @@
 # Library
-library(ggplot2)
+library(tidyverse)
+library(cowplot)
 
 ########### 
 ## Decision Boundaries
@@ -54,7 +55,7 @@ SimOne <- function(Tmax,c){
 }
 
 set.seed(123)
-Nsim <- 5000
+Nsim <- 10000
 Ngrid <- 500
 cgrid <- seq(0,1,length.out=Ngrid)
 uest <- rep(NA,Ngrid)
@@ -73,8 +74,11 @@ for (i in 1:Ngrid){
 plotdata <- data.frame(cgrid=cgrid[2:(Ngrid-1)],uest=uest[2:(Ngrid-1)])
 # Plot
 ggplot(plotdata, aes(x=cgrid, y=uest)) +
-  geom_line()
-ggsave("cgridrough.jpg",height=5,width=6.5)
+  geom_line() +
+  theme_cowplot() +
+  labs(y="Expected utility", x="Decision boundary parameter (c)")
+  
+ggsave("cgridrough.jpg",height=4,width=6)
 
 ind_low <- which(cgrid>0.4)[1]
 ind_high <- which(cgrid<0.6)[length(which(cgrid<0.6))]
@@ -91,13 +95,16 @@ c_hat <- maxi
 
 cat("Optimal c is", round(c_hat,3))
 
+data = read_csv("./logs_ex1/ex1_uhat_bsd.csv")
 ggplot(data, aes(t, pt, fill= as.character(dstar))) + 
   geom_tile() +
   scale_fill_manual(values = c("white", "grey", "black"), name = "Decisions") +
   stat_function(fun = function(t) c_hat*sqrt(t-1)/sqrt(Tmax-1), color="red")+ 
   stat_function(fun = function(t) ((c_hat-1)*sqrt(t-1)/sqrt(Tmax-1) + 1), color="red") +
+  theme_cowplot() +
+  labs(fill="Decisions", x=TeX("Step ($t$)"), y=TeX("Running mean ($p_t$)")) +
   ylim(c(0,1))
-ggsave("bound_gridc.jpg",height=5,width=6.5)
+ggsave("bound_gridc.jpg",height=4,width=6)
 
 
 

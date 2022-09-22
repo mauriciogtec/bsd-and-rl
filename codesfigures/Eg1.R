@@ -1,12 +1,13 @@
 # Library
 library(ggplot2)
+library(cowplot)
+library(latex2exp)
 
 # Input
 Tmax <- 50 # Max number of pats
 Nsim <- 500 # Number of simulated trials in each case
 a0 <- 0.5 # Prior Pr(theta=0.4)=Pr(theta=0.6)=0.5
 K <- 100
-
 # Decisions
 # d=0,1,2 (Continue, Terminate theta=0.4, Terminate theta=0.6)
 
@@ -62,37 +63,64 @@ for (t in 2:Tmax){
 
 #####################
 # plot spaghetti
-set.seed(1234)
-Ntrials <- length(Trials)
-pt <- t <- num <- c()
-for (ii in 1:10){
-  dataone <- Trials[[Ntrials-sample(100,1)]]
-  pttemp <- rep(0,50)
-  for (i in 1:50){
-    pttemp[i] <- sum(dataone$y[1:i])/i
-  }
-  pt <- c(pt,pttemp,NA)
-  t <- c(t,1:50,NA)
-  num <- c(num,rep(as.character(ii),51))
-}
-tracedata <- data.frame(pt=pt,t=t,num=num)
+# set.seed(1234)
+# Ntrials <- length(Trials)
+# pt <- t <- num <- c()
+# for (ii in 1:10){
+#   dataone <- Trials[[Ntrials-sample(100,1)]]
+#   pttemp <- rep(0,50)
+#   for (i in 1:50){
+#     pttemp[i] <- sum(dataone$y[1:i])/i
+#   }
+#   pt <- c(pt,pttemp,NA)
+#   t <- c(t,1:50,NA)
+#   num <- c(num,rep(as.character(ii),51))
+# }
+# tracedata <- data.frame(pt=pt,t=t,num=num)
 
+library(tidyverse)
+ntrails = 10
+p = sample(c(0.4, 0.6), size=ntrails, replace=TRUE)
+p = matrix(rep(p, 50), ntrails, 50)
+aux = runif(Tmax * ntrails)
 
-ggplot(data=tracedata, aes(x=t, y=pt,color=num)) +
-  geom_point() +
+tracedata =  as.integer(aux < p) %>% 
+  matrix(nrow=ntrails, ncol=Tmax) %>% 
+  apply(1, cummean) %>% 
+  t %>% 
+  as.data.frame() %>% 
+  mutate(num=1:n()) %>% 
+  pivot_longer(cols=-num, names_to="x", values_to="y") %>% 
+  mutate(x=as.integer(str_remove(x, "V"))) %>% 
+  arrange(num, x) %>% 
+  group_by(num) %>% 
+  mutate(xend=lead(x, 1), yend=lead(y, 1)) %>% 
+  ungroup() %>% 
+  mutate(num=as.factor(num))
+
+tracedata %>% 
+  na.omit() %>%  # only if using arrows
+  ggplot() +
+  # geom_point() +
   geom_segment(
-    aes(
-      xend=c(tail(t, n=-1), NA), 
-      yend=c(tail(pt, n=-1), NA)
-    ),
-    arrow=arrow(length=unit(0.3,"cm"))
+    aes(x=x, y=y, xend=xend, yend=yend, color=num),
+    arrow=arrow(length=unit(0.12,"cm")),
+    alpha=0.6,
+    size=0.8
   ) +
+  # geom_line(
+  #   # alpha=0.5,
+  #   aes(x=t, y=pt, color=as.factor(num)) +
+  #   size=0.8
+  # ) +
   # stat_function(fun = function(s) b1 * s + c, color="red")+ 
   # stat_function(fun = function(s) -b2 * s + c, color="red") +
   #xlim(c(0,1)) +
-  xlab("t") + ylab("p_t") + 
-  theme(legend.position="none")
-ggsave("Eg1spagh.jpg",height=5,width=6.5)
+  labs(x=TeX("Step ($t$)"), y=TeX("Running mean ($p_t$)")) +
+  theme_cowplot() +
+  theme(legend.position="none") +
+  scale_color_hue(l=40, c=40)
+ggsave("Eg1spagh.jpg",height=4.5,width=6.5)
 
 ####################
 stop <- FALSE
@@ -322,4 +350,4 @@ ggplot(data, aes(t, pt, fill= uhat2)) +
                        breaks=b, labels=format(b), name = "d=2")
 ggsave("uhat2.jpg",height=5,width=6.5)
 
-
+write_csv(data, "./logs_ex1/ex1_uhat_bsd.csv")
