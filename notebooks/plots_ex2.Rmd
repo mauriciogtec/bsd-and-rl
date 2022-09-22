@@ -1,0 +1,168 @@
+---
+title: "Plots for Example 2"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+library(tidyverse)
+library(cowplot)
+library(latex2exp)
+
+# next two are for python to read .npz files
+library(reticulate)
+np = import("numpy")
+
+# qlims = c(-150, 100)
+
+# logdir = "../ex2-results/seed_110107"
+# rldir = "../ex2-results/seed_110104"
+# rldir = "../ex2-results/seed_110105"
+# rldir = "../ex2-results/seed_110106"
+# rldir = "../ex2-results/seed_110104" 
+# rldir = "../ex2-results/seed_123456"
+# rldir = "../ex2-results/seed_123"
+# rldir = "../ex2-results/seed_1234"
+rldir = "../ex2-results/seed_123456789"
+# rldir = "../ex2-results/seed_1234567"
+# rldf = read_csv(sprintf("%s/best_eval.csv", rldir))
+rldf = read_csv(sprintf("%s/latest_eval.csv", rldir))
+# %>% 
+  # filter(x < 0.5)
+
+bsddit = "../"
+```
+
+```{r}
+df = rldf %>% 
+  dplyr::select(x, y, eval0, eval1, eval2) %>%
+  pivot_longer(cols=c("eval0", "eval1", "eval2"), names_to="D", values_to="val") %>%
+  mutate(D=as.integer(str_replace(D, "eval", "")))
+head(df)
+```
+
+Plot the probability of selecting each action
+
+```{r, fig.height=3, fig.width=8}
+brks = c(0.0, 1.0)
+
+ggplot(df) +
+  geom_tile(aes(x=x, y=y, fill=val)) +
+  facet_wrap(~ D, ncol=3) +
+  theme_cowplot() +
+  scale_fill_gradientn(limits = brks, colors=c("black", gray(0.95))) +
+  labs(
+    fill="Probability",
+    x=TeX("Posterior std. dev. ($s_{\\delta}$)"),
+    y=TeX("Posterior mean  ($\\bar{\\delta}_{95}$)")
+  )
+
+
+ggsave("figs/ex2_pr.png", width=10, height=4, units="in")
+```
+
+Same as above but save them all separately.
+
+```{r}
+brks = c(0.0, 1.0)
+
+for (v in c(0, 1, 2)) {
+  p = filter(df, D==v) %>% 
+    ggplot() +
+      geom_tile(aes(x=x, y=y, fill=val)) +
+      facet_wrap(~ D, ncol=3) +
+      theme_cowplot() +
+      scale_fill_gradientn(limits = brks, colors=c("black", "lightgrey")) +
+      labs(fill=sprintf("d=%s", v), x=TeX("$\\sigma_t$"), y=TeX("$\\mu_t$"))
+  fname = sprintf("figs/ex2_pr_%s.png", v)
+  ggsave(fname, plot=p, height=5, width=6, units="in")
+}
+```
+
+Now plot the decision boundasries
+
+```{r}
+tracedata = read_csv("../codesfigures/Eg2tracedata.csv")
+```
+
+```{r, fig.width=6, fig.height=4}
+xlo = min(tracedata$sl, na.rm=TRUE)
+xhi = max(tracedata$sl, na.rm=TRUE)
+# xlo = 0.1
+ylims = c(-1.5, 2.5)
+rldf$y = pmax(ylims[1], pmin(ylims[2], rldf$y))
+tracedata$dl = pmax(ylims[1], pmin(ylims[2], tracedata$dl))
+
+rldf %>% 
+  filter(x >= xlo, x<= xhi) %>% 
+  ggplot() +
+  geom_tile(aes(x=x, y=y, fill=factor(act))) + 
+  scale_fill_manual(values=c("white", "grey", "black")) +
+  geom_segment(
+    aes(
+      x=sl,
+      y=dl,
+      xend=c(tail(sl, n=-1), NA),
+      yend=c(tail(dl, n=-1), NA),
+      color=as.factor(num),
+    ),
+    alpha=0.45,
+    arrow=arrow(length=unit(0.12,"cm")),
+    size=0.8,
+    data=tracedata
+  ) +
+  theme_cowplot() +
+  scale_color_hue(l=40, c=40) +
+  theme_cowplot() +
+  theme(
+    legend.position="top",
+    legend.margin=margin(0,0,0,0)
+    ) +
+  guides(color=FALSE) +
+  scale_x_continuous(n.breaks=8, limits=c(xlo, xhi)) +
+  labs(
+    fill="Decisions",
+    x=TeX("Posterior std. dev. ($s_{\\delta}$)"),
+    y=TeX("Posterior mean  ($\\bar{\\delta}_{95}$)")
+  )
+
+ggsave("figs/ex2_boundaries.png", height=4, width=5, units="in")
+```
+
+Historical rewards
+
+```{r}
+evals = np$load(
+  sprintf("%s/evaluations.npz", rldir), allow_pickle = TRUE
+)
+results = 100 * evals$get("results")
+evaldf = tibble(
+  timesteps = evals$get("timesteps"),
+  mu = apply(results, 1, mean),
+  upper = apply(results, 1, quantile, 0.75),
+  lower = apply(results, 1, quantile, 0.25)
+)
+maxr = max(evaldf$mu)
+
+ggplot(evaldf) +
+  geom_line(aes(x=timesteps, y=mu)) +
+  # geom_ribbon(
+  #   aes(x=timesteps, ymin=lower, ymax=upper),
+  #   alpha=0.25
+  # ) +
+  geom_hline(aes(yintercept=maxr), lty=2) +
+  # geom_text(aes(0, maxr, label = maxr, vjust = -1, hjust=-0.5)) +
+  theme_cowplot() +
+  scale_y_continuous(n.breaks=8) +
+  labs(x="Simulation steps", y=TeX("Evaluation episode total rewards (G_0)"))
+
+ggsave("figs/ex1_returns.png", width=6.5, height=4.5, units="in")
+```
+
+The maximum mean reward over 1000 eval episodes is
+
+```{r}
+maxr
+```
+

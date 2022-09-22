@@ -1,0 +1,255 @@
+---
+title: "Plots for Example 1"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r, warning=FALSE, message=FALSE, results='hide'}
+library(tidyverse)
+library(cowplot)
+library(latex2exp)
+# library(tikzDevice)
+
+
+# next two are for python to read .npz files
+library(reticulate)
+np = import("numpy")
+
+example = 1
+
+if (example == 1) {
+  qlims = c(-150, 100)
+} else {
+  qlims = c(-100, 100)
+}
+
+
+rldir = "../ex1-results/seed_123456"
+# rldir = "../ex1-results/seed_110104"
+rldf = read_csv(sprintf("%s/best_eval.csv", rldir)) %>% 
+  mutate(method="RL") %>% 
+  mutate(eval0 = 100 * eval0, eval1 = 100 * eval1, eval2 = 100 * eval2) %>% 
+  mutate(x=50*x)
+
+bsddir = "../ex1-results/"
+bsddf = read_csv(sprintf("%s/ex1_uhat_bsd.csv", bsddir))  %>% 
+  rename(x=t, y=pt) %>% 
+  mutate(method="BSD")
+```
+
+## RL
+
+
+Plot the state-action value function.
+```{r, fig.height=4, fig.width=11}
+brks = c(-150, 0, 100)
+
+df = rldf %>% 
+  dplyr::select(x, y, eval0, eval1, eval2) %>%
+  pivot_longer(cols=c("eval0", "eval1", "eval2"), names_to="D", values_to="val") %>%
+  mutate(D=as.integer(str_replace(D, "eval", "")))
+# head(df)
+
+levs = c(
+  "0"=TeX("$D_t=0$"),
+  "1"=TeX("$D_t=1$"),
+  "2"=TeX("$D_t=2$")
+)
+df$D_ = as.factor(df$D)
+levels(df$D_) = levs
+
+p = df %>% 
+  mutate(val = pmin(pmax(val, qlims[1]), qlims[2])) %>% 
+  ggplot() +
+  geom_tile(aes(x=x, y=y, fill=val)) +
+  facet_wrap(~ D_, ncol=3, labeller = label_parsed) +
+  theme_cowplot() +
+  scale_fill_gradientn(
+    limits=qlims,
+    values = scales::rescale(brks),
+    colors=c("black", "grey", grey(0.9))
+  ) +
+  labs(fill="Value", x=TeX("Time step $\\t$"), y=TeX("Running mean ($\\p_t$)")) +
+  guides(fill = guide_colourbar(barwidth = 20, title.vjust=1)) +
+  theme(
+    strip.background = element_rect(fill="white"),
+    strip.text = element_text(size=15, vjust=-1),
+    legend.position = "top",
+    legend.margin=margin(0,0,0,0),
+    legend.title.align = 0.5,
+    legend.box.margin=margin(0,-5,-20,-5),
+    strip.text.x=element_text(vjust=-1)
+  )
+
+# plot_grid(p, labels="B)", vjust=3)
+p
+ggsave("figs/ex1_qvals.png", width=10, height=4.5, units="in")
+```
+
+```{r, fig.height=4, fig.width=11}
+brks = c(-150, 0, 100)
+
+df = bsddf %>% 
+  dplyr::select(x, y, uhat0, uhat1, uhat2) %>%
+  pivot_longer(cols=c("uhat0", "uhat1", "uhat2"), names_to="D", values_to="val") %>%
+  mutate(D=as.integer(str_replace(D, "uhat", "")))
+
+levs = c(
+  "0"=TeX("$D_t=0$"),
+  "1"=TeX("$D_t=1$"),
+  "2"=TeX("$D_t=2$")
+)
+df$D_ = as.factor(df$D)
+levels(df$D_) = levs
+
+p = df %>% 
+  mutate(val = pmin(pmax(val, brks[1]), brks[3])) %>% 
+  ggplot() +
+  geom_tile(aes(x=x, y=y, fill=val)) +
+  facet_wrap(~ D_, ncol=3, labeller = label_parsed) +
+  theme_cowplot() +
+  scale_fill_gradientn(
+    limits=qlims,
+    colors=c("black", "grey", grey(0.9)),
+    values=scales::rescale(brks)
+  ) +
+  labs(fill="Utility", x=TeX("Time step $\\t$"), y=TeX("Running mean ($\\p_t$)")) +
+  guides(fill = guide_colourbar(barwidth = 20, title.vjust = 1)) +
+  theme(
+    strip.background = element_rect(fill="white"),
+    strip.text = element_text(size=15, vjust=-1),
+    legend.position = "top",
+    legend.margin=margin(0,0,0,0),
+    legend.title.align = 0.5,
+    legend.box.margin=margin(0,-5,-20,-5),
+    strip.text.x=element_text(vjust=-1)
+  )
+
+# plot_grid(p, labels="A)", vjust=3)
+p
+ggsave("figs/ex1_uhat.png", width=10, height=4.5, units="in")
+```
+
+
+Same as above but save them all separately.
+
+```{r}
+brks = c(qlims[1], 0, qlims[2])
+
+for (v in c(0, 1, 2)) {
+  p = df %>% 
+    mutate(val = pmin(pmax(val, qlims[1]), qlims[2])) %>%
+    filter(D==v) %>% 
+    ggplot() +
+    geom_tile(aes(x=x, y=y, fill=val)) +
+    theme_cowplot() +
+    scale_fill_gradientn(limits = qlims, colors=c("black", "grey", "white")) +
+    labs(fill="", x=TeX("Step ($t$)"), y=TeX("Running mean $(\\p_t)$"))
+  if (v != 2)
+    p = p + theme(legend.position="none")
+  fname = sprintf("figs/ex1_qvals_%s.png", v)
+  ggsave(fname, plot=p, height=5, width=5.1 + 0.9 * (v == 2), units="in")
+}
+```
+
+Now plot the decision boundaries
+
+```{r}
+tracedata = read_csv("../codesfigures/Eg1tracedata.csv")
+```
+
+```{r}
+# No segments
+ggplot(rldf) +
+  geom_tile(aes(x=x, y=y, fill=factor(act))) + 
+  scale_fill_manual(values=c(grey(0.95), "grey", "black")) +
+  geom_segment(
+    aes(x=x, y=y, xend=xend, yend=yend, color=as.factor(num)),
+    arrow=arrow(length=unit(0.12,"cm")),
+    alpha=0.6,
+    size=0.8,
+    data=na.omit(tracedata)
+  ) +
+  guides(color=FALSE) +
+  scale_color_hue(l=40, c=40) +
+  theme_cowplot() +
+  theme(
+    legend.position="top",
+    legend.margin=margin(0,0,0,0)
+    ) +
+  labs(fill="Decisions", x=TeX("Time step $t$"), y=TeX("Running mean ($p_t$)"))
+ggsave("figs/ex1_qvals_boundaries.png", height=4, width=5, units="in")
+```
+
+
+```{r}
+ggplot(bsddf) +
+  geom_tile(aes(x=x, y=y, fill=factor(dstar))) + 
+  scale_fill_manual(values=c(grey(0.95), "grey", "black")) +
+  geom_segment(
+    aes(x=x, y=y, xend=xend, yend=yend, color=as.factor(num)),
+    arrow=arrow(length=unit(0.12,"cm")),
+    alpha=0.6,
+    size=0.8,
+    data=na.omit(tracedata)
+  ) +
+  guides(color=FALSE) +
+  theme_cowplot() +
+  theme(
+    legend.position="top",
+    legend.margin=margin(0,0,0,0)
+    ) +
+  labs(fill="Decisions", x=TeX("Time step $t$"), y=TeX("Running mean ($p_t$)")) +
+  scale_color_hue(l=40, c=40)
+
+ggsave("figs/ex1_uhat_boundaries.png", height=4, width=5, units="in")
+```
+
+Historical rewards
+
+```{r}
+evals = np$load(
+  sprintf("%s/evaluations.npz", rldir), allow_pickle = TRUE
+)
+results = 100 * evals$get("results")
+evaldf = tibble(
+  timesteps = evals$get("timesteps"),
+  mu = apply(results, 1, mean),
+  upper = apply(results, 1, quantile, 0.95),
+  lower = apply(results, 1, quantile, 0.05)
+)
+maxr = max(evaldf$mu)
+
+ggplot(evaldf) +
+  geom_line(aes(x=timesteps, y=mu, color="Mean of 1000 test episodes")) +
+  # geom_ribbon(
+  #   aes(x=timesteps, ymin=pmax(-70, lower), ymax=upper, fill="std. dev (1000 eps.)"),
+  #   alpha=0.25
+  # ) +
+  geom_hline(aes(yintercept=maxr, lty="Best eval score")) +
+  # geom_text(aes(0, maxr, label = maxr, vjust = -1, hjust=-0.5)) +
+  theme_cowplot() +
+  labs(x="Simulation steps", y=TeX("Evaluation episode returns (G_0)")) + 
+  scale_fill_manual(values="black") +
+  scale_color_manual(values="black") + 
+  scale_linetype_manual(values=2) + 
+  theme(
+    # legend.position = c(0.7, 0.75),
+    legend.position="top",
+    # legend.box.background = element_rect(fill="white", color="black"),
+    legend.title=element_blank(),
+    legend.spacing.y = unit(0, "cm"),
+    legend.margin=margin(0,0,0,0)
+  ) +
+  labs(fill="", color="") + 
+  scale_y_continuous(n.breaks=10)
+
+ggsave("figs/ex1_returns.png", width=5, height=4, units="in")
+```
+
+The maximum mean reward over 1000 eval episodes is
+
+```{r}
+maxr
+```
