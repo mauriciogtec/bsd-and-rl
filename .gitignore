@@ -53,3 +53,6 @@ results/*
 notebooks/*
 !notebooks/plots_ex2.Rmd
 !notebooks/plots_ex1.Rmd
+
+# 
+# Rplots.pdf

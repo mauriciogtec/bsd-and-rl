@@ -435,7 +435,6 @@ ggplot(plotdata, aes(x=cgrid, y=uest)) +
   geom_line() +
   theme_cowplot() +
   labs(y="Expected utility", x=TeX(sprintf("Decision boundary parameter (\\phi)")))
-  
 ggsave("results/bsd_ex1/cgridrough.jpg",height=4,width=6)
 
 ind_low <- which(cgrid>0.4)[1]
@@ -453,7 +452,7 @@ c_hat <- maxi
 
 cat("Optimal c is", round(c_hat,3))
 
-data = read_csv("results/bsd_ex1/uhat.csv")
+data = read_csv("results/bsd_ex1/uhatdata.csv")
 ggplot(data, aes(t, pt, fill= as.character(dstar))) + 
   geom_tile() +
   scale_fill_manual(values = c("white", "grey", "black"), name = "Decisions") +
@@ -461,8 +460,7 @@ ggplot(data, aes(t, pt, fill= as.character(dstar))) +
   stat_function(fun = function(t) ((c_hat-1)*sqrt(t-1)/sqrt(Tmax-1) + 1), color="red") +
   theme_cowplot() +
   labs(fill="Decisions", x=TeX("Step ($t$)"), y=TeX("Running mean ($p_t$)")) +
-  ylim(c(0,1)) +
-
+  ylim(c(0,1))
 ggsave("results/bsd_ex1/bound_gridc.jpg",height=4,width=6)
 
 
