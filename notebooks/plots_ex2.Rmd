@@ -1,8 +1,6 @@
 ---
 title: "Plots for Example 2"
-output: 
-  html_document:
-    keep_md: true
+output: html_document
 ---
 
 ```{r, warning=FALSE, message=FALSE, results='hide'}
@@ -16,22 +14,10 @@ np = import("numpy")
 
 # qlims = c(-150, 100)
 
-# logdir = "../ex2-results/seed_110107"
-# rldir = "../ex2-results/seed_110104"
-# rldir = "../ex2-results/seed_110105"
-# rldir = "../ex2-results/seed_110106"
-# rldir = "../ex2-results/seed_110104" 
-# rldir = "../ex2-results/seed_123456"
-# rldir = "../ex2-results/seed_123"
-# rldir = "../ex2-results/seed_1234"
-rldir = "../ex2-results/seed_123456789"
-# rldir = "../ex2-results/seed_1234567"
-# rldf = read_csv(sprintf("%s/best_eval.csv", rldir))
+rldir = "../results/rl_ex2/seed_123456"
 rldf = read_csv(sprintf("%s/latest_eval.csv", rldir))
-# %>% 
-  # filter(x < 0.5)
 
-bsddit = "../"
+bsddir = "../results/bsd_ex2"
 ```
 
 ```{r}
@@ -47,7 +33,7 @@ Plot the probability of selecting each action
 ```{r, fig.height=3, fig.width=8}
 brks = c(0.0, 1.0)
 
-ggplot(df) +
+p = ggplot(df) +
   geom_tile(aes(x=x, y=y, fill=val)) +
   facet_wrap(~ D, ncol=3) +
   theme_cowplot() +
@@ -59,31 +45,15 @@ ggplot(df) +
   )
 
 
-ggsave("figs/ex2_pr.png", width=10, height=4, units="in")
+ggsave("paper_figures/ex2_pr.png", plot=p, width=10, height=4, units="in")
+p
 ```
 
-Same as above but save them all separately.
-
-```{r}
-brks = c(0.0, 1.0)
-
-for (v in c(0, 1, 2)) {
-  p = filter(df, D==v) %>% 
-    ggplot() +
-      geom_tile(aes(x=x, y=y, fill=val)) +
-      facet_wrap(~ D, ncol=3) +
-      theme_cowplot() +
-      scale_fill_gradientn(limits = brks, colors=c("black", "lightgrey")) +
-      labs(fill=sprintf("d=%s", v), x=TeX("$\\sigma_t$"), y=TeX("$\\mu_t$"))
-  fname = sprintf("figs/ex2_pr_%s.png", v)
-  ggsave(fname, plot=p, height=5, width=6, units="in")
-}
-```
 
 Now plot the decision boundasries
 
 ```{r}
-tracedata = read_csv("../codesfigures/Eg2tracedata.csv")
+tracedata = read_csv(sprintf("%s/tracedata.csv", bsddir))
 ```
 
 ```{r, fig.width=6, fig.height=4}
@@ -94,7 +64,7 @@ ylims = c(-1.5, 2.5)
 rldf$y = pmax(ylims[1], pmin(ylims[2], rldf$y))
 tracedata$dl = pmax(ylims[1], pmin(ylims[2], tracedata$dl))
 
-rldf %>% 
+p = rldf %>% 
   filter(x >= xlo, x<= xhi) %>% 
   ggplot() +
   geom_tile(aes(x=x, y=y, fill=factor(act))) + 
@@ -127,7 +97,8 @@ rldf %>%
     y=TeX("Posterior mean  ($\\bar{\\delta}_{95}$)")
   )
 
-ggsave("figs/ex2_boundaries.png", height=4, width=5, units="in")
+ggsave("paper_figures/ex2_boundaries.png", plot=p, height=4, width=5, units="in")
+p
 ```
 
 Historical rewards
@@ -157,7 +128,7 @@ ggplot(evaldf) +
   scale_y_continuous(n.breaks=8) +
   labs(x="Simulation steps", y=TeX("Evaluation episode total rewards (G_0)"))
 
-ggsave("figs/ex1_returns.png", width=6.5, height=4.5, units="in")
+ggsave("paper_figures/ex2_returns.png", width=6.5, height=4.5, units="in")
 ```
 
 The maximum mean reward over 1000 eval episodes is

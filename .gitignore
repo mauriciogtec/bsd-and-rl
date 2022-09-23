@@ -50,9 +50,8 @@ __pycache__/
 logs*
 deprecated/
 results/*
-notebooks/*
-!notebooks/plots_ex2.Rmd
-!notebooks/plots_ex1.Rmd
+notebooks/*.html
+
 
 # 
-# Rplots.pdf
+**/Rplots.pdf

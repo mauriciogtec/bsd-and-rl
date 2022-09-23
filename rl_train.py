@@ -11,7 +11,7 @@ from rl_utils import BestSaveCallback, CustomEvalCallback
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=123456)
     parser.add_argument("--env", type=str, default="ex1", choices=["ex1", "ex2"])
     parser.add_argument("--nproc", type=int, default=1)
     parser.add_argument("--algo", type=str, default="ppo", choices=["ppo", "dqn"])

@@ -16,23 +16,35 @@ For convenience, the code is divided in in scripts to run the BSD and RL algorit
 
 To apply Example 1 (with constrained backward induction) and Example 2 (with the parametric boundaries method) simply run
 ```
-Rscript bsd_ex1.R
-Rscript bsd_ex2.R
+Rscript --vanilla bsd_ex1.R
+Rscript --vanilla bsd_ex2.R
 ```
 
 The outputs contain some diagnostic plots of the model output. For instance, `tracedata.csv` and `uhatdata.csv` are used by the `rmarkdown` notebooks for the paper plots.
 
-Running both examples should not take more than an hour on a regular laptop.
+Running both examples should take about 15 min on a regular laptop.
 
 ## RL
 
 For RL, the script `rl_train.py` is the entrypoint to run both examples. used to run both examples with different algorithms. To reproduce the results from the paper run
 ```
-python rl_train.py env=ex1 algo=dqn
-python rl_train.py env=ex2 algo=ppo
+python rl_train.py --env=ex1 --algo=dqn
+python rl_train.py --env=ex2 --algo=ppo
 ```
 
 The file `rl_envs.py` encodes Examples 1 and 2 as RL "environments" using the quite standard `OpenAI Gym` API. In this way, we can use the implementations of DQN and PPO in `StableBaselines3` out of the box.
+
+Running both examples should take about 2 hours on a regular laptop.
+
+## Reproducing paper figures
+
+After executing the instructions above, run the Rmarkdown notebooks `plots_ex1.Rmd` and `plots_ex2.Rmd`. The easiest thing is to run them using Rstudio. Alternatively, run
+
+```
+cd notebooks
+Rscript --vanilla -e "rmarkdown::render('plots_ex1.Rmd')"
+Rscript --vanilla -e "rmarkdown::render('plots_ex2.Rmd')"
+```
 
 ## Software requirements
 
@@ -43,8 +55,10 @@ R
 * cowplot
 * latex2exp
 * MASS
+* rmarkdown (for the paper figures)
+* reticulate (for interoperability with Python, but only used for the plots)
 
 Python
 * numpy
-* torch
-* stable_baselines3
+* torch (deep learning engine)
+* stable_baselines3 (reinforcement learning algorithms)
